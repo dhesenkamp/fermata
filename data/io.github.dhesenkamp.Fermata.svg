@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F7804F"/>
+      <stop offset="1" stop-color="#DE4515"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0.5" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.16"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="56" fill="url(#face)"/>
+  <circle cx="64" cy="64" r="55" fill="none" stroke="url(#rim)" stroke-width="2"/>
+  <!-- the fermata: a held arc over a dot -->
+  <path d="M30 82 A34 31 0 0 1 98 82" fill="none" stroke="#FFFFFF" stroke-width="10.5" stroke-linecap="round"/>
+  <circle cx="64" cy="73" r="9.5" fill="#FFFFFF"/>
+</svg>
