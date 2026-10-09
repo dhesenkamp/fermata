@@ -66,6 +66,12 @@ The script installs Fermata for your user only, with no `sudo`. It copies the ap
 - To try it without installing, run `./fermata.py`.
 - To remove it again, run `./install.sh --uninstall`. Your settings are kept.
 
+If your terminal says `command not found: fermata`, then `~/.local/bin` isn't on your `PATH` yet. Ubuntu only adds it at login if the folder already existed, and zsh never adds it. Add it in your shell's config file and open a new terminal:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc   # or ~/.bashrc
+```
+
 ## Use
 
 Everything is in the top bar menu. The same actions are available from the command line, for scripts and keyboard shortcuts:

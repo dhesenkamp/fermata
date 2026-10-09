@@ -75,3 +75,16 @@ update-desktop-database -q "$data/applications" 2>/dev/null || true
 
 echo "Fermata is installed and starting in your top bar."
 nohup "$bin" >/dev/null 2>&1 &
+
+# Ubuntu only adds ~/.local/bin to PATH if it existed at login, and zsh never
+# reads ~/.profile at all, so the command is often missing right after install.
+case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *)
+        rc="$HOME/.${SHELL##*/}rc"
+        echo
+        echo "To use the 'fermata' command in a terminal, add ~/.local/bin to your PATH:"
+        echo "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ${rc/#$HOME/\~}"
+        echo "then open a new terminal. (The app itself works either way.)"
+        ;;
+esac
