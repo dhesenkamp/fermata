@@ -1,0 +1,9 @@
+{
+  "uuid": "fermata@dhesenkamp.github.io",
+  "name": "Fermata",
+  "description": "A calm pomodoro timer for the top bar, with breaks you can't miss.\n\nClick the timer for a small card with the time left and the controls. Right-click starts and pauses. When time is up, a card slides in and stays until you respond, the screen edges glow softly, and a short chime plays. It never takes keyboard focus or covers your work.",
+  "shell-version": ["45", "46", "47", "48", "49"],
+  "settings-schema": "org.gnome.shell.extensions.fermata",
+  "url": "https://github.com/dhesenkamp/fermata",
+  "version-name": "0.2.0"
+}

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Control the Fermata GNOME Shell extension from a terminal or a keyboard shortcut.
+set -euo pipefail
+
+uuid="fermata@dhesenkamp.github.io"
+
+usage() {
+    cat <<EOF
+Usage: fermata [command]
+
+  toggle        start, pause or resume
+  skip          jump to the next phase
+  extend        add five minutes
+  reset         back to round one
+  status        print the current state (the default)
+  open          open the card in the top bar
+  preview       show the alert without touching the timer
+  preferences   open the settings window
+EOF
+}
+
+call() {
+    gdbus call --session --dest org.gnome.Shell --object-path /io/github/dhesenkamp/Fermata \
+        --method "io.github.dhesenkamp.Fermata.$1" 2>/dev/null || {
+        echo "Fermata isn't running. Turn it on with: gnome-extensions enable $uuid" >&2
+        exit 1
+    }
+}
+
+command="${1:-status}"
+command="${command#--}" # the old Python version took --toggle etc.
+case "$command" in
+    toggle | skip | extend | reset | open | preview)
+        call "${command^}" >/dev/null ;;
+    status)
+        out="$(call Status)"
+        out="${out#\(\'}"
+        echo "${out%\',\)}" ;;
+    preferences | prefs | settings)
+        exec gnome-extensions prefs "$uuid" ;;
+    -h | help)
+        usage ;;
+    *)
+        usage >&2
+        exit 2 ;;
+esac

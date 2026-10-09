@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.fermata" path="/org/gnome/shell/extensions/fermata/">
+    <key name="focus-minutes" type="i">
+      <range min="1" max="180"/>
+      <default>30</default>
+      <summary>Length of a focus session, in minutes</summary>
+    </key>
+    <key name="short-break-minutes" type="i">
+      <range min="1" max="60"/>
+      <default>5</default>
+      <summary>Length of a short break, in minutes</summary>
+    </key>
+    <key name="long-break-minutes" type="i">
+      <range min="0" max="90"/>
+      <default>15</default>
+      <summary>Length of a long break, in minutes (0 turns long breaks off)</summary>
+    </key>
+    <key name="long-break-every" type="i">
+      <range min="1" max="12"/>
+      <default>4</default>
+      <summary>Number of focus rounds before a long break</summary>
+    </key>
+    <key name="auto-start-breaks" type="b">
+      <default>false</default>
+      <summary>Start breaks without waiting for a click</summary>
+    </key>
+    <key name="auto-start-focus" type="b">
+      <default>false</default>
+      <summary>Start focus sessions without waiting for a click</summary>
+    </key>
+    <key name="chime" type="b">
+      <default>true</default>
+      <summary>Play a chime when time is up</summary>
+    </key>
+    <key name="glow" type="b">
+      <default>true</default>
+      <summary>Let the screen edges glow when time is up</summary>
+    </key>
+    <key name="remind-every-minutes" type="i">
+      <range min="0" max="30"/>
+      <default>2</default>
+      <summary>Remind again every this many minutes until you respond (0 means only once)</summary>
+    </key>
+    <key name="countdown-style" type="s">
+      <choices>
+        <choice value="mm:ss"/>
+        <choice value="minutes"/>
+        <choice value="hidden"/>
+      </choices>
+      <default>'mm:ss'</default>
+      <summary>How the countdown appears next to the top bar icon</summary>
+    </key>
+    <key name="preview" type="i">
+      <default>0</default>
+      <summary>Internal: changed by the preferences window to request a preview of the alert</summary>
+    </key>
+    <key name="timer-state" type="s">
+      <default>''</default>
+      <summary>Internal: the running timer, kept while the screen is locked</summary>
+    </key>
+    <key name="stats" type="s">
+      <default>''</default>
+      <summary>Internal: today's focus sessions and minutes</summary>
+    </key>
+  </schema>
+</schemalist>
