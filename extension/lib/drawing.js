@@ -1,23 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Cairo drawing for the stopwatch glyph, the card's progress ring and the alert badge.
+// Cairo drawing: the top bar stopwatch, the badges on the cards, and the screen glow.
 
 import Cairo from 'cairo';
 
-import {FOCUS, SHORT, LONG} from './timer.js';
-
-// Ubuntu orange for focus, a calm green and blue for the breaks.
-export const ACCENT = {[FOCUS]: '#E95420', [SHORT]: '#2EC27E', [LONG]: '#3584E4'};
-// Lighter tints for the dark top bar.
-const PANEL_TINT = {[SHORT]: '#8FF0A4', [LONG]: '#99C1F1'};
-const PANEL_ALERT = {[FOCUS]: '#FF7A45', [SHORT]: '#57E389', [LONG]: '#62A0EA'};
-
-export function hexToRgb(hex) {
-    const n = parseInt(hex.slice(1), 16);
-    return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
-}
+import {hexToRgb} from './palette.js';
 
 /** The theme node's foreground colour as [r, g, b] in 0..1. */
-export function foreground(actor) {
+function foreground(actor) {
     const c = actor.get_theme_node().get_foreground_color();
     return [c.red / 255, c.green / 255, c.blue / 255];
 }
@@ -43,20 +32,17 @@ function remainingArc(cr, cx, cy, r, fraction) {
 
 /**
  * The top bar glyph: a stopwatch whose ring empties as time runs down.
- * `state` is the timer state; `phase` and `upcoming` pick the colours.
+ * `tint` colours the ring (null: the panel's text colour); `dot` is the time's-up colour.
  */
-export function drawStopwatch(area, {fraction, state, phase, upcoming}) {
+export function drawStopwatch(area, {fraction, state, tint, dot}) {
     const cr = area.get_context();
     const [w] = area.get_surface_size();
-    const s = w / 16;
-    cr.scale(s, s);
+    cr.scale(w / 16, w / 16);
     const fg = foreground(area);
     const cx = 8, cy = 8.9, r = 5.4, lw = 1.9;
 
     if (state === 'done') {
-        // Time's up: a solid dot in the colour of what comes next.
-        const [ar, ag, ab] = hexToRgb(PANEL_ALERT[upcoming]);
-        cr.setSourceRGBA(ar, ag, ab, 1);
+        cr.setSourceRGBA(...hexToRgb(dot), 1);
         roundedRect(cr, 6.4, 0.55, 3.2, 1.75, 0.8);
         cr.fill();
         cr.arc(cx, cy, r + lw / 2, 0, 2 * Math.PI);
@@ -69,18 +55,18 @@ export function drawStopwatch(area, {fraction, state, phase, upcoming}) {
     }
 
     const strong = state === 'paused' ? 0.6 : 1;
-    const tint = phase === FOCUS ? fg : hexToRgb(PANEL_TINT[phase]);
+    const ring = tint ? hexToRgb(tint) : fg;
     cr.setSourceRGBA(...fg, strong);
     roundedRect(cr, 6.4, 0.55, 3.2, 1.75, 0.8);
     cr.fill();
 
     cr.setLineWidth(lw);
-    cr.setSourceRGBA(...tint, 0.3);
+    cr.setSourceRGBA(...ring, 0.3);
     cr.arc(cx, cy, r, 0, 2 * Math.PI);
     cr.stroke();
 
     cr.setLineCap(Cairo.LineCap.ROUND);
-    cr.setSourceRGBA(...tint, strong);
+    cr.setSourceRGBA(...ring, strong);
     remainingArc(cr, cx, cy, r, state === 'idle' ? 1 : fraction);
     cr.stroke();
 
@@ -93,54 +79,86 @@ export function drawStopwatch(area, {fraction, state, phase, upcoming}) {
     cr.$dispose();
 }
 
-/** The card's big progress ring. */
-export function drawProgressRing(area, {fraction, accentPhase: phase, state}) {
+// Glyphs drawn in a 44 × 44 box centred on (22, 22).
+const GLYPHS = {
+    stopwatch(cr) {
+        cr.setLineWidth(2.4);
+        cr.arc(22, 23.6, 9.6, 0, 2 * Math.PI);
+        cr.stroke();
+        roundedRect(cr, 19.4, 10.8, 5.2, 2.7, 1.1);
+        cr.fill();
+    },
+    check(cr) {
+        GLYPHS.stopwatch(cr);
+        cr.setLineWidth(2.3);
+        cr.moveTo(18.1, 23.9);
+        cr.lineTo(20.9, 26.6);
+        cr.lineTo(26.0, 21.3);
+        cr.stroke();
+    },
+    pause(cr) {
+        roundedRect(cr, 16.8, 15.5, 3.6, 13, 1.4);
+        roundedRect(cr, 23.6, 15.5, 3.6, 13, 1.4);
+        cr.fill();
+    },
+    cup(cr) {
+        cr.setLineWidth(2.3);
+        cr.moveTo(13.5, 19);
+        cr.lineTo(27.5, 19);
+        cr.lineTo(27.5, 26);
+        cr.arc(23, 26, 4.5, 0, Math.PI / 2);
+        cr.lineTo(18, 30.5);
+        cr.arc(18, 26, 4.5, Math.PI / 2, Math.PI);
+        cr.closePath();
+        cr.stroke();
+        cr.arc(28.6, 23.2, 3.1, -Math.PI / 2, Math.PI / 2);
+        cr.stroke();
+        cr.setLineWidth(1.9);
+        for (const x of [18.3, 22.7]) {
+            cr.moveTo(x, 15.6);
+            cr.curveTo(x - 1.6, 14.2, x + 1.6, 12.6, x, 11.2);
+            cr.stroke();
+        }
+    },
+};
+
+/**
+ * A badge: a tinted disc with a glyph. With `fraction` set, a progress ring runs round it.
+ * Drawn to fit whatever size the area has.
+ */
+export function drawBadge(area, {color, glyph, fraction = null, paused = false}) {
     const cr = area.get_context();
     const [w, h] = area.get_surface_size();
-    const lw = Math.max(4, w * 0.055);
-    const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - lw / 2 - 1;
-    const fg = foreground(area);
-    const accent = hexToRgb(ACCENT[phase]);
-
-    cr.setLineWidth(lw);
-    cr.setSourceRGBA(...fg, 0.1);
-    cr.arc(cx, cy, r, 0, 2 * Math.PI);
-    cr.stroke();
-
-    cr.setLineCap(Cairo.LineCap.ROUND);
-    cr.setSourceRGBA(...accent, state === 'paused' ? 0.55 : 1);
-    remainingArc(cr, cx, cy, r, state === 'done' || state === 'idle' ? 1 : fraction);
-    cr.stroke();
-    cr.$dispose();
-}
-
-/** The alert badge: a tinted disc with a stopwatch and a check mark. */
-export function drawBadge(area, phase) {
-    const cr = area.get_context();
-    const [w, h] = area.get_surface_size();
-    const s = Math.min(w, h) / 44;
+    const size = fraction === null ? 44 : 54;
+    const s = Math.min(w, h) / size;
     cr.scale(s, s);
-    const [r, g, b] = hexToRgb(ACCENT[phase]);
-    const cx = 22, cy = 22;
+    const rgb = hexToRgb(color);
+    const c = size / 2;
 
-    cr.setSourceRGBA(r, g, b, 0.14);
-    cr.arc(cx, cy, 22, 0, 2 * Math.PI);
+    // With a ring round it, the disc and glyph shrink a little to leave air between them.
+    const inner = fraction === null ? 1 : 0.88;
+    cr.setSourceRGBA(...rgb, 0.13);
+    cr.arc(c, c, 22 * inner, 0, 2 * Math.PI);
     cr.fill();
 
-    cr.setSourceRGBA(r, g, b, 1);
-    cr.setLineWidth(2.4);
-    cr.arc(cx, cy + 1.6, 9.6, 0, 2 * Math.PI);
-    cr.stroke();
-    roundedRect(cr, cx - 2.6, cy + 1.6 - 9.6 - 1.2 - 3.0, 5.2, 2.7, 1.1);
-    cr.fill();
+    if (fraction !== null) {
+        cr.setLineWidth(3);
+        cr.setSourceRGBA(...rgb, 0.2);
+        cr.arc(c, c, 25.5, 0, 2 * Math.PI);
+        cr.stroke();
+        cr.setLineCap(Cairo.LineCap.ROUND);
+        cr.setSourceRGBA(...rgb, paused ? 0.55 : 1);
+        remainingArc(cr, c, c, 25.5, fraction);
+        cr.stroke();
+    }
 
-    cr.setLineWidth(2.3);
+    cr.translate(c, c);
+    cr.scale(inner, inner);
+    cr.translate(-22, -22);
+    cr.setSourceRGBA(...rgb, 1);
     cr.setLineCap(Cairo.LineCap.ROUND);
     cr.setLineJoin(Cairo.LineJoin.ROUND);
-    cr.moveTo(cx - 3.9, cy + 1.9);
-    cr.lineTo(cx - 1.1, cy + 4.6);
-    cr.lineTo(cx + 4.0, cy - 0.7);
-    cr.stroke();
+    GLYPHS[glyph](cr);
     cr.$dispose();
 }
 
@@ -150,12 +168,12 @@ const GLOW_FALLOFF = [[0, 1], [0.1, 0.72], [0.28, 0.4], [0.52, 0.15], [0.78, 0.0
 /**
  * One edge of the screen glow, drawn as a mitred trapezoid. Where two edges meet,
  * both have the same distance to their edge, so the corners join without a seam.
- * `edge` is 'top' | 'bottom' | 'left' | 'right'; the area is `depth` thick.
+ * `edge` is 'top' | 'bottom' | 'left' | 'right'; the area is the glow's depth thick.
  */
-export function drawGlowEdge(area, edge, phase, peak = 0.62) {
+export function drawGlowEdge(area, edge, color, peak = 0.62) {
     const cr = area.get_context();
     const [w, h] = area.get_surface_size();
-    const [r, g, b] = hexToRgb(ACCENT[phase]);
+    const [r, g, b] = hexToRgb(color);
     const d = edge === 'top' || edge === 'bottom' ? h : w;
     const shapes = {
         top: [[[0, 0], [w, 0], [w - d, d], [d, d]], [0, 0, 0, d]],

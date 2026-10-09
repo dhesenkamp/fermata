@@ -6,6 +6,13 @@ import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
+const PALETTE_CHOICES = [
+    ['dusk', 'Dusk', 'Iris, teal and lavender'],
+    ['ubuntu', 'Ubuntu', 'Orange, green and blue'],
+    ['pomodoro', 'Pomodoro', 'Tomato, basil and olive'],
+    ['stone', 'Stone', 'Slate, sage and mist'],
+];
+
 const COUNTDOWN_STYLES = [
     ['mm:ss', 'Minutes and seconds'],
     ['minutes', 'Minutes only'],
@@ -16,7 +23,7 @@ export default class FermataPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         window._settings = settings; // keep it alive as long as the window
-        window.set_default_size(460, 720);
+        window.set_default_size(460, 980);
 
         const page = new Adw.PreferencesPage();
         window.add(page);
@@ -43,25 +50,30 @@ export default class FermataPreferences extends ExtensionPreferences {
         alerts.add(tryIt);
         page.add(alerts);
 
-        const panel = new Adw.PreferencesGroup({
-            title: 'Top bar',
+        const look = new Adw.PreferencesGroup({
+            title: 'Appearance',
             description: 'Click the timer for the card. Right-click, or tap with two fingers, to start and pause.',
         });
-        const countdown = new Adw.ComboRow({
-            title: 'Countdown',
-            model: Gtk.StringList.new(COUNTDOWN_STYLES.map(([, label]) => label)),
-        });
-        const syncCountdown = () => {
-            countdown.selected = Math.max(0, COUNTDOWN_STYLES.findIndex(([key]) =>
-                key === settings.get_string('countdown-style')));
-        };
-        syncCountdown();
-        countdown.connect('notify::selected', () =>
-            settings.set_string('countdown-style', COUNTDOWN_STYLES[countdown.selected][0]));
-        settings.connect('changed::countdown-style', syncCountdown);
-        panel.add(countdown);
-        page.add(panel);
+        look.add(choiceRow(settings, 'palette', 'Colours', PALETTE_CHOICES));
+        look.add(choiceRow(settings, 'countdown-style', 'Countdown in the top bar', COUNTDOWN_STYLES));
+        page.add(look);
     }
+}
+
+/** A drop-down for a string key; `choices` is a list of [value, label, subtitle?]. */
+function choiceRow(settings, key, title, choices) {
+    const row = new Adw.ComboRow({title, model: Gtk.StringList.new(choices.map(([, label]) => label))});
+    const sync = () => {
+        const index = Math.max(0, choices.findIndex(([value]) => value === settings.get_string(key)));
+        if (row.selected !== index)
+            row.selected = index;
+        row.subtitle = choices[index][2] ?? '';
+    };
+    sync();
+    row.connect('notify::selected', () => settings.set_string(key, choices[row.selected][0]));
+    const id = settings.connect(`changed::${key}`, sync);
+    row.connect('destroy', () => settings.disconnect(id));
+    return row;
 }
 
 function spinRow(settings, key, title, subtitle, lower, upper) {

@@ -11,90 +11,114 @@
   font-feature-settings: "tnum";
 }
 
-/* ── The card behind a left click ────────────────────────────────────── */
-
-.fermata-card {
-  width: 248px;
-  padding: 4px 6px 0 6px;
-}
-
-.fermata-ring-stack,
-.fermata-ring {
-  width: 148px;
-  height: 148px;
-}
-
-.fermata-ring-stack {
-  margin: 4px 0 8px 0;
-}
-
-.fermata-time {
-  font-size: 30px;
-  font-weight: 300;
-  font-feature-settings: "tnum";
-}
-
-.fermata-phase {
-  font-size: 12px;
-}
-
-.fermata-round {
-  font-size: 12px;
-  margin-bottom: 14px;
-}
-
-.fermata-controls {
-  spacing: 8px;
-  margin-bottom: 14px;
-}
-
-.fermata-icon-button {
-  width: 34px;
-  height: 34px;
+/* The menu behind the top bar button only positions the card; the card draws itself. */
+.fermata-menu .popup-menu-content {
   padding: 0;
+  background-color: transparent;
+  border-width: 0;
+  box-shadow: none;
+}
+
+/* ── The card: shared by the alert and the top bar card ──────────────── */
+
+.fermata-surface {
+  width: 404px;
+  padding: 14px 12px 14px 14px;
+  spacing: 14px;
+  border-radius: 18px;
+  box-shadow: 0 12px 32px 0 rgba(0, 0, 0, 0.24);
+}
+
+.fermata-surface.fermata-light {
+  background-color: #ffffff;
+  color: #1f1f23;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.fermata-surface.fermata-dark {
+  background-color: #2b2b30;
+  color: #f3f3f5;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fermata-badge-box { width: 44px; height: 44px; }
+.fermata-badge-box.fermata-badge-ring { width: 54px; height: 54px; }
+
+.fermata-ripple {
+  width: 44px;
+  height: 44px;
   border-radius: 99px;
-  font-size: 12px;
+  border: 2px solid transparent;
+}
+
+.fermata-surface-text {
+  spacing: 2px;
+}
+
+.fermata-surface-title {
+  font-size: 15px;
   font-weight: bold;
-  background-color: rgba(127, 127, 127, 0.14);
+  margin-top: 4px;
+}
+
+.fermata-surface-title.fermata-clock {
+  font-size: 22px;
+  font-feature-settings: "tnum";
+  margin-top: 1px;
+}
+
+.fermata-surface-subtitle {
+  font-size: 12.5px;
+}
+
+.fermata-surface-note {
+  font-size: 12px;
+}
+
+.fermata-surface-buttons {
+  spacing: 8px;
+  margin-top: 10px;
+}
+
+.fermata-light .fermata-surface-subtitle,
+.fermata-light .fermata-surface-note,
+.fermata-light .fermata-overtime,
+.fermata-light .fermata-corner-button { color: rgba(31, 31, 35, 0.6); }
+
+.fermata-dark .fermata-surface-subtitle,
+.fermata-dark .fermata-surface-note,
+.fermata-dark .fermata-overtime,
+.fermata-dark .fermata-corner-button { color: rgba(243, 243, 245, 0.6); }
+
+.fermata-light .fermata-surface-note { color: rgba(31, 31, 35, 0.45); }
+.fermata-dark .fermata-surface-note { color: rgba(243, 243, 245, 0.45); }
+
+.fermata-corner {
+  spacing: 2px;
+}
+
+.fermata-overtime {
+  font-size: 12px;
+  font-feature-settings: "tnum";
+  margin-right: 6px;
+}
+
+.fermata-corner-button {
+  padding: 5px;
+  border-radius: 99px;
   transition-duration: 120ms;
 }
 
-.fermata-icon-button:hover,
-.fermata-icon-button:focus {
-  background-color: rgba(127, 127, 127, 0.26);
+.fermata-corner-button StIcon {
+  icon-size: 14px;
 }
 
-.fermata-icon-button StIcon {
-  icon-size: 16px;
-}
+.fermata-light .fermata-corner-button:hover,
+.fermata-light .fermata-corner-button:focus { background-color: rgba(0, 0, 0, 0.06); color: #1f1f23; }
+.fermata-dark .fermata-corner-button:hover,
+.fermata-dark .fermata-corner-button:focus { background-color: rgba(255, 255, 255, 0.08); color: #f3f3f5; }
 
-.fermata-card .fermata-primary {
-  width: 100px;
-  padding: 8px 0;
-}
-
-.fermata-footer {
-  border-top: 1px solid rgba(127, 127, 127, 0.2);
-  padding: 8px 0 0 2px;
-  spacing: 6px;
-}
-
-.fermata-today {
-  font-size: 12px;
-}
-
-.fermata-footer .fermata-icon-button {
-  width: 28px;
-  height: 28px;
-  background-color: transparent;
-}
-
-.fermata-footer .fermata-icon-button:hover,
-.fermata-footer .fermata-icon-button:focus {
-  background-color: rgba(127, 127, 127, 0.18);
-}
-
-/* ── Buttons shared by the card and the alert ────────────────────────── */
+/* ── Buttons ─────────────────────────────────────────────────────────── */
 
 .fermata-button {
   border-radius: 99px;
@@ -103,108 +127,15 @@
   transition-duration: 120ms;
 }
 
+/* The colour comes from the palette, set in code. */
 .fermata-primary {
   color: #ffffff;
   font-weight: bold;
 }
 
-.fermata-primary.fermata-focus, .fermata-focus .fermata-primary { background-color: #e95420; }
-.fermata-primary.fermata-focus:hover, .fermata-focus .fermata-primary:hover { background-color: #ee6a3b; }
-.fermata-primary.fermata-focus:active, .fermata-focus .fermata-primary:active { background-color: #cf4515; }
-
-.fermata-primary.fermata-short, .fermata-short .fermata-primary { background-color: #2ec27e; }
-.fermata-primary.fermata-short:hover, .fermata-short .fermata-primary:hover { background-color: #3fd08e; }
-.fermata-primary.fermata-short:active, .fermata-short .fermata-primary:active { background-color: #26a96d; }
-
-.fermata-primary.fermata-long, .fermata-long .fermata-primary { background-color: #3584e4; }
-.fermata-primary.fermata-long:hover, .fermata-long .fermata-primary:hover { background-color: #4a93ea; }
-.fermata-primary.fermata-long:active, .fermata-long .fermata-primary:active { background-color: #2a72cc; }
-
-/* ── The alert ───────────────────────────────────────────────────────── */
-
-.fermata-alert {
-  width: 404px;
-  padding: 14px 12px 14px 14px;
-  spacing: 14px;
-  border-radius: 18px;
-  box-shadow: 0 12px 32px 0 rgba(0, 0, 0, 0.24);
-}
-
-.fermata-alert.fermata-light {
-  background-color: #ffffff;
-  color: #1f1f23;
-  border: 1px solid rgba(0, 0, 0, 0.07);
-}
-
-.fermata-alert.fermata-dark {
-  background-color: #2b2b30;
-  color: #f3f3f5;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.fermata-light .fermata-alert-subtitle,
-.fermata-light .fermata-alert-overtime,
-.fermata-light .fermata-alert-close { color: rgba(31, 31, 35, 0.6); }
-
-.fermata-dark .fermata-alert-subtitle,
-.fermata-dark .fermata-alert-overtime,
-.fermata-dark .fermata-alert-close { color: rgba(243, 243, 245, 0.6); }
-
-.fermata-badge-box,
-.fermata-badge,
-.fermata-ripple {
-  width: 44px;
-  height: 44px;
-}
-
-.fermata-ripple {
-  border-radius: 99px;
-  border: 2px solid transparent;
-}
-
-.fermata-focus .fermata-ripple { border-color: #e95420; }
-.fermata-short .fermata-ripple { border-color: #2ec27e; }
-.fermata-long .fermata-ripple { border-color: #3584e4; }
-
-.fermata-alert-text {
-  spacing: 2px;
-}
-
-.fermata-alert-title {
-  font-size: 15px;
-  font-weight: bold;
-  margin-top: 4px;
-}
-
-.fermata-alert-subtitle {
-  font-size: 12.5px;
-}
-
-.fermata-alert-overtime {
-  font-size: 12px;
-  font-feature-settings: "tnum";
-  margin-right: 6px;
-}
-
-.fermata-alert-close {
-  padding: 5px;
-  border-radius: 99px;
-  transition-duration: 120ms;
-}
-
-.fermata-alert-close StIcon {
-  icon-size: 14px;
-}
-
-.fermata-light .fermata-alert-close:hover { background-color: rgba(0, 0, 0, 0.06); color: #1f1f23; }
-.fermata-dark .fermata-alert-close:hover { background-color: rgba(255, 255, 255, 0.08); color: #f3f3f5; }
-
-.fermata-alert-buttons {
-  spacing: 8px;
-  margin-top: 10px;
-}
-
 .fermata-light .fermata-secondary { background-color: rgba(0, 0, 0, 0.055); color: #1f1f23; }
-.fermata-light .fermata-secondary:hover { background-color: rgba(0, 0, 0, 0.1); }
+.fermata-light .fermata-secondary:hover,
+.fermata-light .fermata-secondary:focus { background-color: rgba(0, 0, 0, 0.1); }
 .fermata-dark .fermata-secondary { background-color: rgba(255, 255, 255, 0.08); color: #f3f3f5; }
-.fermata-dark .fermata-secondary:hover { background-color: rgba(255, 255, 255, 0.14); }
+.fermata-dark .fermata-secondary:hover,
+.fermata-dark .fermata-secondary:focus { background-color: rgba(255, 255, 255, 0.14); }

@@ -8,7 +8,7 @@
 
 <p align="center">
   <img src="screenshots/time-is-up.png" width="800"
-       alt="When a focus session ends: a card at the top of the screen says “Time for a break”, the screen edges glow green, and the top bar shows a green dot with +0:01">
+       alt="When a focus session ends: a card at the top of the screen says “Time for a break”, the screen edges glow teal, and the top bar shows a teal dot with +0:01">
 </p>
 
 Most timers end with a notification that slides away and leaves a red dot you notice an hour later. Fermata's alert stays on screen until you respond. It never covers your work or takes the keyboard.
@@ -21,14 +21,14 @@ A *fermata* (𝄐) is the musical sign for a held pause.
 
 <p align="center">
   <img src="screenshots/top-bar.png" width="380"
-       alt="Three top bar states: focus with 29:55 left, a break with 5:00 left, and a finished session 6 seconds ago">
+       alt="Three top bar states: focus with 24:12 left, a break with 4:58 left, and a finished session 6 seconds ago">
 </p>
 
-- **Click it** for a small card with everything you need. It shows the time left, the round, start/pause, +5 minutes, skip and reset, today's total, and a way into the settings.
+- **Click it** for a card in the same style as the alert. It shows the time left inside a progress ring, the round, when the phase ends, today's total, and buttons for pause, +5 minutes and skip, plus small ones for reset and settings.
 - **Right-click it**, or tap with two fingers on a touchpad, to start or pause without opening anything.
 
 <p align="center">
-  <img src="screenshots/card.png" width="276" alt="The card: a large orange progress ring around 29:55, round 1 of 4, a Pause button and small buttons for +5, skip and reset">
+  <img src="screenshots/card.png" width="460" alt="The card: a progress ring badge next to 24:11, “Focus · round 2 of 4 · until 15:40”, “1 h 30 min today · 3 sessions”, and Pause, +5 min and Skip buttons">
 </p>
 
 **When time is up, it makes sure you notice:**
@@ -40,7 +40,14 @@ A *fermata* (𝄐) is the musical sign for a held pause.
 
 The alert never takes keyboard focus, and it isn't a system notification, so Do Not Disturb doesn't hide it. If you lock your screen mid-session, the timer keeps going and greets you when you come back.
 
-**Sensible defaults, easy to change.** It runs 30 minutes of focus and 5 minutes of break, with a 15 minute break after every fourth round.
+**Sensible defaults, easy to change.** It runs 30 minutes of focus and 5 minutes of break, with a 15 minute break after every fourth round. There are four colour palettes:
+
+- **Dusk** (iris, teal, lavender) is the default.
+- **Ubuntu** (orange, green, blue).
+- **Pomodoro** (tomato, basil, olive).
+- **Stone** (slate, sage, mist), the quietest of the four.
+
+All of them keep button text readable, at a contrast of at least 4.5:1.
 
 <p align="center">
   <img src="screenshots/preferences.png" width="400" alt="The preferences window">
@@ -78,7 +85,8 @@ The installer also adds a small `fermata` command, handy for scripts and keyboar
 | `fermata extend` | Add five minutes |
 | `fermata reset` | Back to round one |
 | `fermata status` | Print the current state, e.g. `Focus · 12:40 left` |
-| `fermata open` | Open the card |
+| `fermata open` | Open or close the card |
+| `fermata dismiss` | Close the time's-up card without starting the next phase |
 | `fermata preview` | Show the alert without touching the timer |
 | `fermata preferences` | Open the settings |
 
@@ -94,7 +102,7 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc   # or ~/.bashrc
 
 | Path | Contents |
 | --- | --- |
-| `extension/` | The extension as it is packed. `lib/timer.js` is the timer logic, `lib/indicator.js` the top bar and card, `lib/alert.js` the alert and glow. |
+| `extension/` | The extension as it is packed. `lib/timer.js` is the timer logic, `lib/card.js` the card shape shared by the alert and the top bar card, `lib/indicator.js` the top bar, `lib/alert.js` the alert and glow, and `lib/palette.js` the colours. |
 | `tests/` | Tests for the timer logic: `gjs -m tests/timer.test.js` |
 | `tools/make-chimes.py` | Synthesises the two chimes in `extension/sounds/` |
 | `./install.sh --pack` | Builds the zip for extensions.gnome.org |

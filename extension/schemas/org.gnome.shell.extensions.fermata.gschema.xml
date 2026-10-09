@@ -51,6 +51,16 @@
       <default>'mm:ss'</default>
       <summary>How the countdown appears next to the top bar icon</summary>
     </key>
+    <key name="palette" type="s">
+      <choices>
+        <choice value="dusk"/>
+        <choice value="ubuntu"/>
+        <choice value="pomodoro"/>
+        <choice value="stone"/>
+      </choices>
+      <default>'dusk'</default>
+      <summary>Colour palette</summary>
+    </key>
     <key name="preview" type="i">
       <default>0</default>
       <summary>Internal: changed by the preferences window to request a preview of the alert</summary>

@@ -14,7 +14,8 @@ Usage: fermata [command]
   extend        add five minutes
   reset         back to round one
   status        print the current state (the default)
-  open          open the card in the top bar
+  open          open or close the card in the top bar
+  dismiss       close the time's-up card without starting the next phase
   preview       show the alert without touching the timer
   preferences   open the settings window
 EOF
@@ -31,7 +32,7 @@ call() {
 command="${1:-status}"
 command="${command#--}" # the old Python version took --toggle etc.
 case "$command" in
-    toggle | skip | extend | reset | open | preview)
+    toggle | skip | extend | reset | open | dismiss | preview)
         call "${command^}" >/dev/null ;;
     status)
         out="$(call Status)"

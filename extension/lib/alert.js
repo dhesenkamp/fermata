@@ -6,7 +6,8 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {drawBadge, drawGlowEdge} from './drawing.js';
+import {CardSurface} from './card.js';
+import {drawGlowEdge} from './drawing.js';
 import {formatClock} from './timer.js';
 
 function scaleFactor() {
@@ -19,57 +20,33 @@ function pointerMonitor() {
         x >= m.x && x < m.x + m.width && y >= m.y && y < m.y + m.height) ?? Main.layoutManager.primaryMonitor;
 }
 
-/** A small card that slides in at the top of the screen and stays until you act on it. */
+/** A card that slides in at the top of the screen and stays until you act on it. */
 export class AlertCard {
-    constructor({phase, title, subtitle, primary, secondary, onPrimary, onSecondary, onClose, endedAt, dark}) {
+    /** `colors` is {ring, fill} from phaseColors() for what comes next. */
+    constructor({title, subtitle, primary, secondary, onPrimary, onSecondary, onClose, endedAt, dark, colors}) {
         this._endedAt = endedAt;
         this._closing = false;
 
-        this.actor = new St.BoxLayout({
-            style_class: `fermata-alert fermata-${phase} ${dark ? 'fermata-dark' : 'fermata-light'}`,
-            reactive: true,
-        });
+        this._surface = new CardSurface();
+        this.actor = this._surface.actor;
+        this._surface.setDark(dark);
+        this._surface.setBadge({color: colors.ring, glyph: 'check'});
 
         // A slow ripple behind the badge: movement in the corner of your eye, not a flashing light.
-        const badgeBox = new St.Widget({
-            layout_manager: new Clutter.BinLayout(),
-            style_class: 'fermata-badge-box',
-            y_align: Clutter.ActorAlign.START,
-        });
-        this._ripple = new St.Widget({style_class: 'fermata-ripple'});
-        const badge = new St.DrawingArea({style_class: 'fermata-badge'});
-        badge.connect('repaint', area => drawBadge(area, phase));
-        badgeBox.add_child(this._ripple);
-        badgeBox.add_child(badge);
-        this.actor.add_child(badgeBox);
+        this._ripple = new St.Widget({style_class: 'fermata-ripple', style: `border-color: ${colors.ring};`});
+        this._surface.badgeBox.insert_child_below(this._ripple, this._surface.badge);
 
-        const column = new St.BoxLayout({vertical: true, x_expand: true, style_class: 'fermata-alert-text'});
-        const header = new St.BoxLayout();
-        header.add_child(new St.Label({text: title, style_class: 'fermata-alert-title', x_expand: true}));
-        this._overtime = new St.Label({style_class: 'fermata-alert-overtime', y_align: Clutter.ActorAlign.CENTER});
-        header.add_child(this._overtime);
-        const close = new St.Button({
-            style_class: 'fermata-alert-close',
-            icon_name: 'window-close-symbolic',
-            accessible_name: 'Dismiss',
-            can_focus: true,
-        });
-        close.connect('clicked', () => onClose());
-        header.add_child(close);
-        column.add_child(header);
-        column.add_child(new St.Label({text: subtitle, style_class: 'fermata-alert-subtitle'}));
+        this._surface.title.text = title;
+        this._surface.subtitle.text = subtitle;
+        this._overtime = new St.Label({style_class: 'fermata-overtime', y_align: Clutter.ActorAlign.CENTER});
+        this._surface.corner.add_child(this._overtime);
+        this._surface.cornerButton('window-close-symbolic', 'Dismiss', onClose);
 
-        const buttons = new St.BoxLayout({style_class: 'fermata-alert-buttons'});
-        for (const [label, style, callback] of [[primary, 'fermata-primary', onPrimary],
-            [secondary, 'fermata-secondary', onSecondary]]) {
-            if (!label)
-                continue;
-            const button = new St.Button({label, style_class: `fermata-button ${style}`, can_focus: true});
-            button.connect('clicked', () => callback());
-            buttons.add_child(button);
-        }
-        column.add_child(buttons);
-        this.actor.add_child(column);
+        const primaryButton = this._surface.addButton(true, onPrimary);
+        primaryButton.label = primary;
+        CardSurface.setFill(primaryButton, colors.fill);
+        if (secondary)
+            this._surface.addButton(false, onSecondary).label = secondary;
         this.update();
     }
 
@@ -87,6 +64,9 @@ export class AlertCard {
             translation_y: 0,
             duration: 320,
             mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
+            // The shell only repaints what it thinks changed, and its idea of the card's
+            // area stops short of the soft edge of the shadow. Repaint once when it lands.
+            onComplete: () => global.stage.queue_redraw(),
         });
         this._startRipple();
     }
@@ -120,6 +100,7 @@ export class AlertCard {
             autoReverse: true,
             repeatCount: 3,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            onComplete: () => global.stage.queue_redraw(),
         });
         this._startRipple();
     }
@@ -134,12 +115,13 @@ export class AlertCard {
             translation_y: -10 * scaleFactor(),
             duration: 200,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
-            onStopped: () => this.actor.destroy(),
+            onStopped: () => this.destroy(),
         });
     }
 
     destroy() {
         this.actor.destroy();
+        global.stage.queue_redraw(); // don't leave the edge of the shadow behind
     }
 }
 
@@ -148,7 +130,7 @@ export class EdgeGlow {
     static DURATION = 4400; // ms
     static PULSES = [[0, 1], [1.35, 0.8], [2.7, 0.6]]; // [start s, strength]
 
-    constructor(phase, onDone) {
+    constructor(color, onDone) {
         this._actors = [];
         const depth = Math.round(72 * scaleFactor());
         for (const monitor of Main.layoutManager.monitors) {
@@ -162,8 +144,11 @@ export class EdgeGlow {
             };
             for (const [edge, [x, y, width, height]] of Object.entries(edges)) {
                 const actor = new St.DrawingArea({x, y, width, height, opacity: 0, reactive: false});
-                actor.connect('repaint', area => drawGlowEdge(area, edge, phase));
+                actor.connect('repaint', area => drawGlowEdge(area, edge, color));
                 Main.layoutManager.addTopChrome(actor, {affectsInputRegion: false});
+                // Just above the application windows: it tints your work, but stays
+                // beneath the alert, the top bar and any open menu.
+                Main.layoutManager.uiGroup.set_child_above_sibling(actor, global.window_group);
                 this._actors.push(actor);
             }
         }

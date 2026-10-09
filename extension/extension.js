@@ -10,6 +10,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {AlertCard, EdgeGlow} from './lib/alert.js';
 import {FermataIndicator} from './lib/indicator.js';
+import {PALETTES, phaseColors} from './lib/palette.js';
 import {FOCUS, LONG, PHASE_NAME, Timer, formatClock, formatDuration} from './lib/timer.js';
 
 const EXTEND_MINUTES = 5;
@@ -22,6 +23,7 @@ const DBUS_XML = `
   <method name="Reset"/>
   <method name="Preview"/>
   <method name="Open"/>
+  <method name="Dismiss"/>
   <method name="Status"><arg type="s" direction="out" name="status"/></method>
 </interface></node>`;
 
@@ -98,8 +100,10 @@ export default class FermataExtension extends Extension {
             'changed::long-break-minutes', () => this._configChanged(),
             'changed::long-break-every', () => this._configChanged(),
             'changed::countdown-style', () => this._refresh(),
+            'changed::palette', () => this._refresh(),
             'changed::preview', () => this.preview(),
             this);
+        this._interface.connectObject('changed::color-scheme', () => this._refresh(), this);
 
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUS_XML, {
             Toggle: () => this.primary(),
@@ -107,7 +111,8 @@ export default class FermataExtension extends Extension {
             Extend: () => this.extend(),
             Reset: () => this.reset(),
             Preview: () => this.preview(),
-            Open: () => this._indicator.menu.open(),
+            Open: () => this._indicator.menu.toggle(),
+            Dismiss: () => this.dismiss(),
             Status: () => this._statusText(),
         });
         this._dbus.export(Gio.DBus.session, DBUS_PATH);
@@ -133,6 +138,7 @@ export default class FermataExtension extends Extension {
         this._dbus.unexport();
         this._dbus = null;
         this._settings.disconnectObject(this);
+        this._interface.disconnectObject(this);
         this._indicator.destroy();
         this._indicator = null;
         this._settings = this._interface = this._timer = this._stats = null;
@@ -323,11 +329,19 @@ export default class FermataExtension extends Extension {
         });
     }
 
+    _dark() {
+        return this._interface.get_string('color-scheme') === 'prefer-dark' ||
+            this._interface.get_string('gtk-theme').toLowerCase().endsWith('-dark');
+    }
+
+    _colors(phase, dark = this._dark()) {
+        return phaseColors(this._settings.get_string('palette'), phase, dark);
+    }
+
     _openAlert(params) {
         this._closeAlert();
-        const dark = this._interface.get_string('color-scheme') === 'prefer-dark' ||
-            this._interface.get_string('gtk-theme').toLowerCase().endsWith('-dark');
-        this._alert = new AlertCard({...params, dark});
+        const dark = this._dark();
+        this._alert = new AlertCard({...params, dark, colors: this._colors(params.phase, dark)});
         this._alert.show();
         return this._alert;
     }
@@ -349,7 +363,7 @@ export default class FermataExtension extends Extension {
         }
         if (this._settings.get_boolean('glow')) {
             this._glow?.destroy();
-            this._glow = new EdgeGlow(upcoming, () => (this._glow = null));
+            this._glow = new EdgeGlow(this._colors(upcoming).vivid, () => (this._glow = null));
         }
         if (swellCard)
             this._alert?.nudge();
@@ -374,19 +388,26 @@ export default class FermataExtension extends Extension {
 
     _refresh() {
         const t = this._timer;
+        const s = this._settings;
         const upcoming = t.upcoming();
-        const style = this._settings.get_string('countdown-style');
+        const done = t.state === 'done';
+        const accentPhase = done ? upcoming : t.phase;
+        const dark = this._dark();
+        const palette = PALETTES[s.get_string('palette')] ?? PALETTES.dusk;
+
+        const style = s.get_string('countdown-style');
         let panelText = '';
         if (style !== 'hidden' && t.state !== 'idle') {
-            if (t.state === 'done')
+            if (done)
                 panelText = `+${formatClock(t.overtime())}`;
             else
                 panelText = style === 'minutes' ? `${Math.ceil(t.left() / 60)}m` : formatClock(t.left());
         }
 
+        const breakMinutes = s.get_int(upcoming === LONG ? 'long-break-minutes' : 'short-break-minutes');
         let primaryLabel;
-        if (t.state === 'done')
-            primaryLabel = upcoming === FOCUS ? 'Start focus' : 'Start break';
+        if (done)
+            primaryLabel = upcoming === FOCUS ? 'Start focus' : `Start ${breakMinutes} min break`;
         else if (t.state === 'running')
             primaryLabel = 'Pause';
         else if (t.state === 'paused')
@@ -394,24 +415,44 @@ export default class FermataExtension extends Extension {
         else
             primaryLabel = t.phase === FOCUS ? 'Start focus' : 'Start break';
 
-        let phaseText = PHASE_NAME[t.phase];
-        if (t.state === 'paused')
-            phaseText = 'Paused';
-        else if (t.state === 'done')
-            phaseText = t.phase === FOCUS ? 'Focus done' : 'Break over';
+        const every = s.get_int('long-break-every');
+        const round = t.longBreaksOn() ? `round ${Math.min(Math.max(1, t.roundNow()), every)} of ${every}` : '';
+        const until = GLib.DateTime.new_now_local().add_seconds(t.left()).format('%H:%M');
+        const name = PHASE_NAME[t.phase];
+        let cardSubtitle;
+        if (done)
+            cardSubtitle = t.phase === FOCUS ? 'Focus done · time for a break' : "Break's over · back to focus";
+        else if (t.state === 'paused')
+            cardSubtitle = ['Paused', round].filter(Boolean).join(' · ');
+        else if (t.state === 'idle')
+            cardSubtitle = [t.phase === FOCUS ? 'Ready to focus' : `${name}, ready`, round].filter(Boolean).join(' · ');
+        else if (t.phase === FOCUS)
+            cardSubtitle = ['Focus', round, `until ${until}`].filter(Boolean).join(' · ');
+        else
+            cardSubtitle = `${name} · back at ${until}`;
 
-        const every = this._settings.get_int('long-break-every');
+        let glyph = t.phase === FOCUS ? 'stopwatch' : 'cup';
+        if (done)
+            glyph = 'check';
+        else if (t.state === 'paused')
+            glyph = 'pause';
+
         this._indicator.update({
             state: t.state,
-            phase: t.phase,
-            upcoming,
-            accentPhase: t.state === 'done' ? upcoming : t.phase,
-            fraction: t.fractionLeft(),
+            dark,
+            colors: this._colors(accentPhase, dark),
+            glyph,
+            ringFraction: done || t.state === 'idle' ? 1 : t.fractionLeft(),
             pristine: t.pristine(),
             panelText,
-            timeText: t.state === 'done' ? `+${formatClock(t.overtime())}` : formatClock(t.left()),
-            phaseText,
-            roundText: t.longBreaksOn() ? `Round ${Math.min(Math.max(1, t.roundNow()), every)} of ${every}` : '',
+            panel: {
+                state: t.state,
+                fraction: t.fractionLeft(),
+                tint: t.phase === FOCUS ? null : palette[t.phase].vivid,
+                dot: palette[upcoming].vivid,
+            },
+            timeText: done ? `+${formatClock(t.overtime())}` : formatClock(t.left()),
+            cardSubtitle,
             primaryLabel,
             todayText: this._stats.summary(),
         });

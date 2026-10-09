@@ -53,12 +53,27 @@ if [[ -f "$cli" ]] && head -1 "$cli" | grep -q python; then
     echo "Removed Fermata 0.1 (the Python app)."
 fi
 
+restart_hint() {
+    if [[ "${XDG_SESSION_TYPE:-}" == "x11" ]]; then
+        echo "  press Alt+F2, type r and press Enter."
+    else
+        echo "  log out and back in."
+    fi
+}
+
+updating=false
+gnome-extensions info "$uuid" >/dev/null 2>&1 && updating=true
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 gnome-extensions install --force "$(pack "$tmp")"
 install -Dm755 "$here/bin/fermata" "$cli"
 
-if gnome-extensions enable "$uuid" 2>/dev/null; then
+if $updating; then
+    # GNOME Shell keeps running the old code until it restarts.
+    echo "Fermata is updated. GNOME Shell loads the new version when it restarts:"
+    restart_hint
+elif gnome-extensions enable "$uuid" 2>/dev/null; then
     echo "Fermata is installed and running in your top bar."
 else
     # GNOME Shell only notices new extensions when it starts. Mark it enabled for then.
@@ -71,11 +86,7 @@ else
         fi
     fi
     echo "Fermata is installed. GNOME Shell picks up new extensions when it restarts:"
-    if [[ "${XDG_SESSION_TYPE:-}" == "x11" ]]; then
-        echo "  press Alt+F2, type r and press Enter."
-    else
-        echo "  log out and back in."
-    fi
+    restart_hint
 fi
 
 case ":$PATH:" in
