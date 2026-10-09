@@ -849,6 +849,10 @@ class InputShape:
             xf.XFixesSetWindowShapeRegion.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_int,
                                                       ctypes.c_int, ctypes.c_int, ctypes.c_ulong]
             xf.XFixesDestroyRegion.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+            x11.XInternAtom.restype = ctypes.c_ulong
+            x11.XInternAtom.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+            x11.XChangeProperty.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong,
+                                            ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
             dpy = x11.XOpenDisplay(Gdk.Display.get_default().get_name().encode())
             major, minor = ctypes.c_int(5), ctypes.c_int(0)
             if dpy and xf.XFixesQueryVersion(dpy, ctypes.byref(major), ctypes.byref(minor)) and major.value >= 2:
@@ -859,6 +863,20 @@ class InputShape:
     @property
     def available(self):
         return self.dpy is not None
+
+    def keep_composited(self, gdk_window):
+        """Ask the compositor never to hand this window straight to the display.
+
+        Otherwise a full-screen overlay at full opacity gets "unredirected", and its
+        transparent pixels show up as a black monitor (_NET_WM_BYPASS_COMPOSITOR = 2).
+        """
+        if not self.dpy or gdk_window is None:
+            return
+        Gdk.Display.get_default().sync()
+        atom = self.x11.XInternAtom(self.dpy, b"_NET_WM_BYPASS_COMPOSITOR", 0)
+        value = (ctypes.c_long * 1)(2)
+        self.x11.XChangeProperty(self.dpy, gdk_window.get_xid(), atom, 6, 32, 0, value, 1)  # 6 = CARDINAL
+        self.x11.XSync(self.dpy, 0)
 
     def set(self, gdk_window, rects):
         """Only `rects` (x, y, w, h) take pointer input; an empty list makes the window click-through."""
@@ -1048,7 +1066,9 @@ class EdgeGlow:
             geo, area = mon.get_geometry(), mon.get_workarea()
             win = overlay_window()
             win.move(geo.x, geo.y)
-            win.set_size_request(geo.width, geo.height)
+            # One pixel short of the monitor: compositors treat an exactly monitor-sized
+            # window as full-screen and may stop compositing it, which blacks out the screen.
+            win.set_size_request(geo.width, geo.height - 1)
             glow = Gtk.Box()
             glow.get_style_context().add_class("fermata-glow")
             glow.get_style_context().add_class(f"fermata-{phase}")
@@ -1056,9 +1076,10 @@ class EdgeGlow:
             glow.set_margin_start(area.x - geo.x)
             glow.set_margin_top(area.y - geo.y)
             glow.set_margin_end(geo.x + geo.width - area.x - area.width)
-            glow.set_margin_bottom(geo.y + geo.height - area.y - area.height)
+            glow.set_margin_bottom(max(0, geo.y + geo.height - area.y - area.height - 1))
             win.add(glow)
-            win.connect("realize", lambda w: shapes.set(w.get_window(), []))
+            win.connect("realize", lambda w: (shapes.keep_composited(w.get_window()),
+                                              shapes.set(w.get_window(), [])))
             Gtk.Widget.set_opacity(win, 0)
             win.show_all()
             # Fading the whole window leaves the work to the compositor: GTK paints the gradients once.
